@@ -248,7 +248,7 @@ generate_config() {
     {
       "tag": "tuic-in",
       "type": "tuic",
-      "listen": "$IP",
+      "listen": "188.68.240.160",
       "listen_port": $tuic_port,
       "users": [
         {
