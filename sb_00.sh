@@ -125,6 +125,46 @@ generate_config() {
         }
     },
     {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "188.68.240.161",
+       "listen_port": $HY2_PORT,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://bing.com",
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+    {
+       "tag": "hysteria-in",
+       "type": "hysteria2",
+       "listen": "188.68.234.53",
+       "listen_port": $HY2_PORT,
+       "users": [
+         {
+             "password": "$UUID"
+         }
+     ],
+     "masquerade": "https://bing.com",
+     "tls": {
+         "enabled": true,
+         "alpn": [
+             "h3"
+         ],
+         "certificate_path": "cert.pem",
+         "key_path": "private.key"
+        }
+    },
+    {
       "tag": "vmess-ws-in",
       "type": "vmess",
       "listen": "::",
@@ -144,6 +184,48 @@ generate_config() {
       "tag": "tuic-in",
       "type": "tuic",
       "listen": "188.68.240.160",
+      "listen_port": $TUIC_PORT,
+      "users": [
+        {
+          "uuid": "$UUID",
+          "password": "admin123"
+        }
+      ],
+      "congestion_control": "bbr",
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate_path": "cert.pem",
+        "key_path": "private.key"
+      }
+    },
+        {
+      "tag": "tuic-in",
+      "type": "tuic",
+      "listen": "188.68.234.53",
+      "listen_port": $TUIC_PORT,
+      "users": [
+        {
+          "uuid": "$UUID",
+          "password": "admin123"
+        }
+      ],
+      "congestion_control": "bbr",
+      "tls": {
+        "enabled": true,
+        "alpn": [
+          "h3"
+        ],
+        "certificate_path": "cert.pem",
+        "key_path": "private.key"
+      }
+    },
+        {
+      "tag": "tuic-in",
+      "type": "tuic",
+      "listen": "188.68.240.161",
       "listen_port": $TUIC_PORT,
       "users": [
         {
