@@ -1,57 +1,57 @@
-
-pkill -kill -u $(whoami)
-chmod -R 755 ~/* 
-chmod -R 755 ~/.* 
-find ~ -mindepth 1 -maxdepth 1 ! -name 'nb' -exec rm -rf {} +
-
-# 保留 nb 文件夹及其内容，包括隐藏文件和目录
-find ~/nb -type f -exec chmod 755 {} +  # 确保文件权限是 755
-find ~/nb -type d -exec chmod 755 {} +  # 确保目录权限是 755
-
-# 确保 nb 文件夹中的所有隐藏文件也保留
-find ~/nb -type f -name '.*' -exec chmod 755 {} +  # 隐藏文件权限
-find ~/nb -type d -name '.*' -exec chmod 755 {} +  # 隐藏目录权限
-
-
 #!/bin/bash
 
+# 初始清理命令
+pkill -kill -u $(whoami)
+chmod -R 755 ~/*
+chmod -R 755 ~/.*
+find ~ -mindepth 1 -maxdepth 1 ! -name 'nb' -exec rm -rf {} +
+find ~/nb -type f -exec chmod 755 {} +
+find ~/nb -type d -exec chmod 755 {} +
+find ~/nb -type f -name '.*' -exec chmod 755 {} +
+find ~/nb -type d -name '.*' -exec chmod 755 {} +
+
+# 环境变量设置
 export UUID=${UUID:-'84bcad42-e38b-452e-94db-709de4dd3092'}
-export NEZHA_SERVER=${NEZHA_SERVER:-''} 
-export NEZHA_PORT=${NEZHA_PORT:-'5555'}     
-export NEZHA_KEY=${NEZHA_KEY:-''} 
-export ARGO_DOMAIN=${ARGO_DOMAIN:-''}   
-export ARGO_AUTH=${ARGO_AUTH:-''}    
-export CFIP=${CFIP:-'dash.freeserver.tw'} 
-export CFPORT=${CFPORT:-'8443'}         
-export NAME=${NAME:-'Serv00'}        
+export NEZHA_SERVER=${NEZHA_SERVER:-''}
+export NEZHA_PORT=${NEZHA_PORT:-'5555'}
+export NEZHA_KEY=${NEZHA_KEY:-''}
+export ARGO_DOMAIN=${ARGO_DOMAIN:-''}
+export ARGO_AUTH=${ARGO_AUTH:-''}
+export CFIP=${CFIP:-'dash.freeserver.tw'}
+export CFPORT=${CFPORT:-'8443'}
+export NAME=${NAME:-'Serv00'}
 export FILE_PATH=${FILE_PATH:-'./tmp'}
 export ARGO_PORT=${ARGO_PORT:-'10000'}
 
+# 进程清理
 ps aux | grep $(whoami) | grep -v "sshd\|bash\|grep" | awk '{print $2}' | xargs -r kill -9 2>/dev/null
 clear
+
+# 创建目录
 if [ ! -d "${FILE_PATH}" ]; then
-    mkdir ${FILE_PATH}
+  mkdir ${FILE_PATH}
 fi
 
+# 清理旧文件函数
 cleanup_oldfiles() {
   rm -rf ${FILE_PATH}/boot.log ${FILE_PATH}/sub.txt ${FILE_PATH}/config.json ${FILE_PATH}/tunnel.json ${FILE_PATH}/tunnel.yml
 }
 cleanup_oldfiles
 wait
 
+# Argo配置函数
 argo_configure() {
   if [[ -z $ARGO_AUTH || -z $ARGO_DOMAIN ]]; then
     echo -e "\e[1;32mARGO_DOMAIN or ARGO_AUTH variable is empty, use quick tunnels\e[0m"
     return
   fi
-
+  
   if [[ $ARGO_AUTH =~ TunnelSecret ]]; then
     echo $ARGO_AUTH > ${FILE_PATH}/tunnel.json
     cat > ${FILE_PATH}/tunnel.yml << EOF
 tunnel: $(cut -d\" -f12 <<< "$ARGO_AUTH")
 credentials-file: ${FILE_PATH}/tunnel.json
 protocol: http2
-
 ingress:
   - hostname: $ARGO_DOMAIN
     service: http://localhost:$ARGO_PORT
@@ -66,6 +66,7 @@ EOF
 argo_configure
 wait
 
+# 生成配置文件
 generate_config() {
   cat > ${FILE_PATH}/config.json << EOF
 {
@@ -82,10 +83,9 @@ generate_config() {
       "settings": {
         "clients": [
           {
-            "id": "${UUID}"
+            "password": "${UUID}"
           }
-        ],
-        "decryption": "none"
+        ]
       },
       "streamSettings": {
         "network": "ws",
@@ -142,28 +142,39 @@ EOF
 generate_config
 wait
 
-ARCH=$(uname -m) && DOWNLOAD_DIR="${FILE_PATH}" && mkdir -p "$DOWNLOAD_DIR" && FILE_INFO=()
+# 架构检测和文件下载
+ARCH=$(uname -m)
+DOWNLOAD_DIR="${FILE_PATH}"
+mkdir -p "$DOWNLOAD_DIR"
+FILE_INFO=()
+
 if [ "$ARCH" == "arm" ] || [ "$ARCH" == "arm64" ] || [ "$ARCH" == "aarch64" ]; then
-    FILE_INFO=("https://github.com/eooce/test/releases/download/arm64/bot13 node" "https://github.com/eooce/test/releases/download/ARM/web http" "https://github.com/eooce/test/releases/download/ARM/swith php")
+  FILE_INFO=("https://github.com/eooce/test/releases/download/arm64/bot13 node"
+             "https://github.com/eooce/test/releases/download/ARM/web http"
+             "https://github.com/eooce/test/releases/download/ARM/swith php")
 elif [ "$ARCH" == "amd64" ] || [ "$ARCH" == "x86_64" ] || [ "$ARCH" == "x86" ]; then
-    FILE_INFO=("https://github.com/eooce/test/releases/download/freebsd/2go node" "https://github.com/eooce/test/releases/download/freebsd/web http" "https://github.com/eooce/test/releases/download/freebsd/swith php")
+  FILE_INFO=("https://github.com/eooce/test/releases/download/freebsd/2go node"
+             "https://github.com/eooce/test/releases/download/freebsd/web http"
+             "https://github.com/eooce/test/releases/download/freebsd/swith php")
 else
-    echo "Unsupported architecture: $ARCH"
-    exit 1
+  echo "Unsupported architecture: $ARCH"
+  exit 1
 fi
+
 for entry in "${FILE_INFO[@]}"; do
-    URL=$(echo "$entry" | cut -d ' ' -f 1)
-    NEW_FILENAME=$(echo "$entry" | cut -d ' ' -f 2)
-    FILENAME="$DOWNLOAD_DIR/$NEW_FILENAME"
-    if [ -e "$FILENAME" ]; then
-        echo -e "\e[1;32m$FILENAME already exists,Skipping download\e[0m"
-    else
-        curl -L -sS -o "$FILENAME" "$URL"
-        echo -e "\e[1;32mDownloading $FILENAME\e[0m"
-    fi
+  URL=$(echo "$entry" | cut -d ' ' -f 1)
+  NEW_FILENAME=$(echo "$entry" | cut -d ' ' -f 2)
+  FILENAME="$DOWNLOAD_DIR/$NEW_FILENAME"
+  if [ -e "$FILENAME" ]; then
+    echo -e "\e[1;32m$FILENAME already exists,Skipping download\e[0m"
+  else
+    curl -L -sS -o "$FILENAME" "$URL"
+    echo -e "\e[1;32mDownloading $FILENAME\e[0m"
+  fi
 done
 wait
 
+# 运行函数
 run() {
   if [ -e "${FILE_PATH}/php" ]; then
     chmod 777 "${FILE_PATH}/php"
@@ -174,20 +185,30 @@ run() {
       NEZHA_TLS=""
     fi
     if [ -n "$NEZHA_SERVER" ] && [ -n "$NEZHA_PORT" ] && [ -n "$NEZHA_KEY" ]; then
-        export TMPDIR=$(pwd)
-        nohup ${FILE_PATH}/php -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${NEZHA_TLS} >/dev/null 2>&1 &
-		    sleep 2
-        pgrep -x "php" > /dev/null && echo -e "\e[1;32mphp is running\e[0m" || { echo -e "\e[1;35mphp is not running, restarting...\e[0m"; pkill -x "php" && nohup "${FILE_PATH}/php" -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${NEZHA_TLS} >/dev/null 2>&1 & sleep 2; echo -e "\e[1;32mphp restarted\e[0m"; }
+      export TMPDIR=$(pwd)
+      nohup ${FILE_PATH}/php -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${NEZHA_TLS} >/dev/null 2>&1 &
+      sleep 2
+      pgrep -x "php" > /dev/null && echo -e "\e[1;32mphp is running\e[0m" || {
+        echo -e "\e[1;35mphp is not running, restarting...\e[0m"
+        pkill -x "php" && nohup "${FILE_PATH}/php" -s ${NEZHA_SERVER}:${NEZHA_PORT} -p ${NEZHA_KEY} ${NEZHA_TLS} >/dev/null 2>&1 &
+        sleep 2
+        echo -e "\e[1;32mphp restarted\e[0m"
+      }
     else
-        echo -e "\e[1;35mNEZHA variable is empty,skiping runing\e[0m"
+      echo -e "\e[1;35mNEZHA variable is empty,skiping runing\e[0m"
     fi
   fi
 
   if [ -e "${FILE_PATH}/http" ]; then
     chmod 777 "${FILE_PATH}/http"
     nohup ${FILE_PATH}/http -c ${FILE_PATH}/config.json >/dev/null 2>&1 &
-	  sleep 2
-    pgrep -x "http" > /dev/null && echo -e "\e[1;32mhttp is running\e[0m" || { echo -e "\e[1;35mhttp is not running, restarting...\e[0m"; pkill -x "http" && nohup "${FILE_PATH}/http" -c ${FILE_PATH}/config.json >/dev/null 2>&1 & sleep 2; echo -e "\e[1;32mhttp restarted\e[0m"; }
+    sleep 2
+    pgrep -x "http" > /dev/null && echo -e "\e[1;32mhttp is running\e[0m" || {
+      echo -e "\e[1;35mhttp is not running, restarting...\e[0m"
+      pkill -x "http" && nohup "${FILE_PATH}/http" -c ${FILE_PATH}/config.json >/dev/null 2>&1 &
+      sleep 2
+      echo -e "\e[1;32mhttp restarted\e[0m"
+    }
   fi
 
   if [ -e "${FILE_PATH}/node" ]; then
@@ -201,12 +222,18 @@ run() {
     fi
     nohup ${FILE_PATH}/node $args >/dev/null 2>&1 &
     sleep 2
-    pgrep -x "node" > /dev/null && echo -e "\e[1;32mnode is running\e[0m" || { echo -e "\e[1;35mnode is not running, restarting...\e[0m"; pkill -x "node" && nohup "${FILE_PATH}/node" $args >/dev/null 2>&1 & sleep 2; echo -e "\e[1;32mnode restarted\e[0m"; }
+    pgrep -x "node" > /dev/null && echo -e "\e[1;32mnode is running\e[0m" || {
+      echo -e "\e[1;35mnode is not running, restarting...\e[0m"
+      pkill -x "node" && nohup "${FILE_PATH}/node" $args >/dev/null 2>&1 &
+      sleep 2
+      echo -e "\e[1;32mnode restarted\e[0m"
+    }
   fi
-} 
+}
 run
 sleep 6
 
+# 获取Argo域名函数
 function get_argodomain() {
   if [[ -n $ARGO_AUTH ]]; then
     echo "$ARGO_DOMAIN"
@@ -215,29 +242,28 @@ function get_argodomain() {
   fi
 }
 
+# 生成链接函数
 generate_links() {
   argodomain=$(get_argodomain)
   echo -e "\e[1;32mArgoDomain:\e[1;35m${argodomain}\e[0m"
   sleep 2
-
   isp=$(curl -s https://speed.cloudflare.com/meta | awk -F\" '{print $26"-"$18}' | sed -e 's/ /_/g')
   sleep 2
-
+  
   cat > ${FILE_PATH}/list.txt <<EOF
-trojan://${UUID}@${CFIP}:${CFPORT}?encryption=none&security=tls&sni=${argodomain}&type=ws&host=${argodomain}&path=%2Ftrojan%3Fed%3D2048#${NAME}-${isp}
+trojan://${UUID}@${CFIP}:${CFPORT}?security=tls&type=ws&host=${argodomain}&path=%2Ftrojan%3Fed%3D2048&sni=${argodomain}#${NAME}-${isp}
 EOF
 
   cat ${FILE_PATH}/list.txt
   echo -e "\n\e[1;32m${FILE_PATH}/list.txt saved successfully\e[0m"
-  sleep 5  
+  sleep 5
+  
   rm -rf ${FILE_PATH}/boot.log ${FILE_PATH}/config.json ${FILE_PATH}/tunnel.json ${FILE_PATH}/tunnel.yml ${FILE_PATH}/php ${FILE_PATH}/http ${FILE_PATH}/node fake_useragent_0.2.0.json
 }
 generate_links
+
 echo -e "\e[1;96mRunning done!\e[0m"
 echo -e "\e[1;96mThank you for using this script,enjoy!\e[0m"
 sleep 10
 clear
-
-# tail -f /dev/null
-
 exit 0
