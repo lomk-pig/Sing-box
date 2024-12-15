@@ -78,7 +78,7 @@ generate_config() {
   "inbounds": [
     {
       "port": $ARGO_PORT,
-      "listen": "web1.serv00.com",
+      "listen": "31.186.83.254",
       "protocol": "trojan",
       "settings": {
         "clients": [
